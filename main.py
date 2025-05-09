@@ -2,9 +2,8 @@ import cv2
 import numpy as np
 from ultralytics import YOLO
 from collections import deque, defaultdict
-import math  # For circular mean
+import math
 
-# Initialize the YOLO model and define parameters
 model = YOLO("yolov8m.pt")
 vehicle_class_ids = [2, 3, 5, 7]  # Class IDs for vehicles
 max_history = 30  # Maximum trail history
@@ -12,14 +11,13 @@ distance_threshold = 200  # Threshold for matching detections
 motion_threshold = 50.0  # Minimum motion distance for drawing trails
 max_disappeared = 30  # Max frames an object can disappear
 
-# Load the video file and retrieve its properties
 video_path = r'C:\Users\malid\OneDrive\Belgeler\GitHub\thesis-2025\video footage\video.MP4'
 cap = cv2.VideoCapture(video_path)
 frame_width = int(cap.get(3))
 frame_height = int(cap.get(4))
 fps = cap.get(cv2.CAP_PROP_FPS)
 
-# Estimate how many meters one pixel represents in the scene (e.g., 3.5 meters ≈ 150 pixels)
+# Estimate how many meters one pixel represents
 meters_per_pixel = 3.5 / 150
 
 # Initialize tracking variables
