@@ -32,7 +32,7 @@ angle_history = defaultdict(lambda: deque(maxlen=5))  # Stores recent angles for
 vehicle_data = []  # Store data to be sorted and written later
 
 # Open a file to save the IDs and coordinates
-output_file = open("vehicle_coordinates.txt", "w")
+output_file = open("vehicle_data.txt", "w")
 output_file.write("ID, X, Y, km/h, angle(deg)\n")
 
 # Process each frame of the video
