@@ -15,15 +15,15 @@ angle_history = defaultdict(lambda: deque(maxlen=5))  # Store recent angles for 
 
 video_path = r'C:\Users\malid\OneDrive\Belgeler\GitHub\thesis-2025\video footage\video.MP4'
 cap = cv2.VideoCapture(video_path)
-frame_width = int(cap.get(3))  # Video frame width
-frame_height = int(cap.get(4))  # Video frame height
-fps = cap.get(cv2.CAP_PROP_FPS)  # Frames per second
+frame_width = int(cap.get(3))  
+frame_height = int(cap.get(4))  
+fps = cap.get(cv2.CAP_PROP_FPS) 
 
-meters_per_pixel = 3.5 / 150  # Approximate meter to pixel ratio
+meters_per_pixel = 3.5 / 150 
 
-track_trails = {}  # Stores trails for each object
-object_speeds = defaultdict(float)  # Stores speed for each object
-vehicle_data = []  # List to store all tracked data
+track_trails = {}  
+object_speeds = defaultdict(float)  
+vehicle_data = []  
 
 # ByteTrack tracker config
 byte_cfg = Namespace(
@@ -33,9 +33,9 @@ byte_cfg = Namespace(
     frame_rate=fps,
     mot20=False,
 )
-tracker = BYTETracker(byte_cfg, frame_rate=fps)  # Initialize tracker
+tracker = BYTETracker(byte_cfg, frame_rate=fps)
 
-output_file = open("vehicle_data_bytetrack.csv", "w")  # Open CSV file for output
+output_file = open("vehicle_data_bytetrack.csv", "w")
 output_file.write("ID,X,Y,km/h\n")
 
 while True:
@@ -43,7 +43,6 @@ while True:
     if not ret:
         break
 
-    # Detect objects using YOLOv8
     results = model(frame, conf=0.4, verbose=False)[0]
     detections = []
 
@@ -65,11 +64,11 @@ while True:
         if not track.is_activated:
             continue
 
-        track_id = track.track_id  # Get unique ID
-        tlwh = track.tlwh  # Bounding box
+        track_id = track.track_id 
+        tlwh = track.tlwh  
         x1, y1, w, h = map(int, tlwh)
         x2, y2 = x1 + w, y1 + h
-        cx, cy = x1 + w // 2, y1 + h // 2  # Calculate center point
+        cx, cy = x1 + w // 2, y1 + h // 2 
 
         # Append center to trail
         if track_id not in track_trails:
@@ -97,10 +96,10 @@ while True:
                             (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)
                 cv2.circle(frame, (cx, cy), 5, (0, 255, 255), -1)
 
-                # Add data for output (without angle)
+                # Add data for output
                 vehicle_data.append((track_id, cx, cy, speed_kmph))
 
-    resized = cv2.resize(frame, (1280, 720))  # Resize for display
+    resized = cv2.resize(frame, (1280, 720))
     cv2.imshow('YOLOv8 + ByteTrack', resized)
     if cv2.waitKey(1) & 0xFF == ord("q"):
         break
@@ -108,7 +107,7 @@ while True:
 cap.release()
 cv2.destroyAllWindows()
 
-# Sort data by ID and write to CSV (without angle)
+# Sort data by ID and write to CSV
 vehicle_data.sort()
 for obj_id, x, y, speed in vehicle_data:
     output_file.write(f"{obj_id},{x},{y},{speed:.2f}\n")
