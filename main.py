@@ -8,32 +8,29 @@ model = YOLO("yolov8m.pt")
 vehicle_class_ids = [2, 3, 5, 7]  # Class IDs for vehicles
 max_history = 30  # Maximum trail history
 distance_threshold = 200  # Threshold for matching detections
-motion_threshold = 50.0  # Minimum motion distance for drawing trails
+motion_threshold = 60  # Minimum motion distance for drawing trails
+min_trail_length = 10  # Minimum trail length to consider valid movement
 max_disappeared = 30  # Max frames an object can disappear
 
 video_path = r'C:\Users\malid\OneDrive\Belgeler\GitHub\thesis-2025\video footage\video.MP4'
 cap = cv2.VideoCapture(video_path)
-frame_width = int(cap.get(3))
-frame_height = int(cap.get(4))
 fps = cap.get(cv2.CAP_PROP_FPS)
 
-# Estimate how many meters one pixel represents
 meters_per_pixel = 3.5 / 150
 
-# Initialize tracking variables
-next_object_id = 0
+raw_next_object_id = 0  # Internal counter for raw detection IDs
+true_next_object_id = 0  # Actual ID for logged objects
 tracked_objects = {}  # Stores active tracked objects
 track_trails = {}  # Stores trails of tracked objects
 disappeared = defaultdict(int)  # Tracks how long objects have been missing
 object_boxes = {}  # Stores bounding boxes of tracked objects
 object_speeds = defaultdict(float)  # Stores estimated speed in km/h for each object
-angle_history = defaultdict(lambda: deque(maxlen=5))  # Stores recent angles for smoothing
-
-vehicle_data = []  # Store data to be sorted and written later
+object_id_mapping = {}  # Maps internal IDs to logged IDs
+vehicle_data = defaultdict(list)  # Store data grouped by object ID
 
 # Open a file to save the IDs and coordinates
-output_file = open("vehicle_data.txt", "w")
-output_file.write("ID, X, Y, km/h, angle(deg)\n")
+output_file = open("vehicle_data.csv", "w")
+output_file.write("ID, X, Y, km/h\n")
 
 # Process each frame of the video
 while True:
@@ -95,15 +92,14 @@ while True:
                 disappeared.pop(obj_id, None)
                 object_boxes.pop(obj_id, None)
                 object_speeds.pop(obj_id, None)
-                angle_history.pop(obj_id, None)
 
     # Add new detections as tracked objects
     for i, det in enumerate(detections):
         if i not in matched_detections:
-            new_tracked_objects[next_object_id] = det
-            new_object_boxes[next_object_id] = boxes[i]
-            disappeared[next_object_id] = 0
-            next_object_id += 1
+            new_tracked_objects[raw_next_object_id] = det
+            new_object_boxes[raw_next_object_id] = boxes[i]
+            disappeared[raw_next_object_id] = 0
+            raw_next_object_id += 1
 
     # Update tracking data
     tracked_objects = new_tracked_objects
@@ -125,27 +121,24 @@ while True:
             speed_kmph = speed_pxps * meters_per_pixel * 3.6
             object_speeds[obj_id] = speed_kmph
 
-            angle_rad = np.arctan2(dx, dy)
-            angle_deg = (np.degrees(angle_rad) + 360) % 360
-            angle_history[obj_id].append(angle_deg)
-
-            sin_sum = sum(np.sin(np.radians(a)) for a in angle_history[obj_id])
-            cos_sum = sum(np.cos(np.radians(a)) for a in angle_history[obj_id])
-            smoothed_angle = (np.degrees(np.arctan2(sin_sum, cos_sum)) + 360) % 360
-
-            if distance > motion_threshold:
+            if distance > motion_threshold and len(trail) >= min_trail_length:
                 for i in range(1, len(trail)):
                     cv2.line(frame, trail[i - 1], trail[i], (0, 255, 0), 2)
 
                 x1, y1, x2, y2 = object_boxes.get(obj_id, (0, 0, 0, 0))
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
-                cv2.putText(frame, f"ID {obj_id} ({x}, {y}) {speed_kmph:.1f} km/h {smoothed_angle:.1f} deg",
+                cv2.putText(frame, f"ID {obj_id} ({x}, {y}) {speed_kmph:.1f} km/h",
                             (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)
                 cv2.circle(frame, (x, y), 5, (0, 255, 255), -1)
 
+                # Assign logging ID if first time
+                if obj_id not in object_id_mapping:
+                    object_id_mapping[obj_id] = true_next_object_id
+                    true_next_object_id += 1
+
                 # Store the data to be written later
-                vehicle_data.append((obj_id, x, y, speed_kmph, smoothed_angle))
+                vehicle_data[obj_id].append((x, y, speed_kmph))
 
     resized = cv2.resize(frame, (1280, 720))
     cv2.imshow('vehicle detection', resized)
@@ -156,8 +149,10 @@ cap.release()
 cv2.destroyAllWindows()
 
 # Sort and write vehicle data by ID
-vehicle_data.sort()
-for obj_id, x, y, speed, angle in vehicle_data:
-    output_file.write(f"{obj_id}, {x}, {y}, {speed:.2f}, {angle:.2f}\n")
+for obj_id in sorted(vehicle_data):
+    if len(vehicle_data[obj_id]) >= 120:
+        logging_id = object_id_mapping[obj_id]
+        for x, y, speed in vehicle_data[obj_id]:
+            output_file.write(f"{logging_id}, {x}, {y}, {speed:.2f}\n")
 
 output_file.close()
