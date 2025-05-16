@@ -37,7 +37,7 @@ object_id_mapping = {}
 true_next_object_id = 0
 
 # Open a file to save the IDs and coordinates
-output_file = open("vehicle_data_bytetrack.txt", "w")
+output_file = open("vehicle_data_bytetrack.csv", "w")
 output_file.write("ID, X, Y, km/h\n")
 
 while True:
