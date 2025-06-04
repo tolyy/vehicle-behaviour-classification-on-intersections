@@ -2,7 +2,10 @@ import cv2
 import numpy as np
 from ultralytics import YOLO
 from collections import deque, defaultdict
+from tqdm import tqdm 
 import math
+
+show_debug = True 
 
 model = YOLO("yolov8m.pt")
 vehicle_class_ids = [2, 3, 5, 7]  # Class IDs for vehicles
@@ -11,12 +14,12 @@ distance_threshold = 200  # Threshold for matching detections
 motion_threshold = 60  # Minimum motion distance for drawing trails
 min_trail_length = 10  # Minimum trail length to consider valid movement
 max_disappeared = 30  # Max frames an object can disappear
+repeat_coord_limit = 5  # Max consecutive identical entries allowed
 
 video_path = r'C:\Users\malid\OneDrive\Belgeler\GitHub\thesis-2025\video footage\video.MP4'
 cap = cv2.VideoCapture(video_path)
 fps = cap.get(cv2.CAP_PROP_FPS)
-
-meters_per_pixel = 3.5 / 150
+total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
 raw_next_object_id = 0  # Internal counter for raw detection IDs
 true_next_object_id = 0  # Actual ID for logged objects
@@ -24,16 +27,32 @@ tracked_objects = {}  # Stores active tracked objects
 track_trails = {}  # Stores trails of tracked objects
 disappeared = defaultdict(int)  # Tracks how long objects have been missing
 object_boxes = {}  # Stores bounding boxes of tracked objects
-object_speeds = defaultdict(float)  # Stores estimated speed in km/h for each object
 object_id_mapping = {}  # Maps internal IDs to logged IDs
 vehicle_data = defaultdict(list)  # Store data grouped by object ID
 
-# Open a file to save the IDs and coordinates
-output_file = open("vehicle_data.csv", "w")
-output_file.write("ID, X, Y, km/h\n")
+
+initial_positions  = {} # first (x,y)
+initial_directions = {} # vector at 15th coord
+
+# Function to normalize a vector
+def norm(v):
+    n = math.hypot(v[0], v[1])
+    return (v[0]/n, v[1]/n) if n else (0, 0)
+
+# Function to determine the turn label based on initial and final vectors
+def turn_label(start_pt, init_vec, end_pt, angle_thresh=15):
+    final_vec = (end_pt[0] - start_pt[0], end_pt[1] - start_pt[1])
+    unit_init, unit_final = norm(init_vec), norm(final_vec)
+    dot_val = np.clip(unit_init[0]*unit_final[0] + unit_init[1]*unit_final[1], -1.0, 1.0)
+    heading_change = math.degrees(math.acos(dot_val))
+    cross_val = -(unit_init[0]*unit_final[1] - unit_init[1]*unit_final[0])
+
+    if heading_change < angle_thresh:
+        return "straight"
+    return "left" if cross_val > 0 else "right"
 
 # Process each frame of the video
-while True:
+for _ in tqdm(range(total_frames), desc="Processing video"):
     ret, frame = cap.read()
     if not ret:
         break
@@ -91,7 +110,6 @@ while True:
                 track_trails.pop(obj_id, None)
                 disappeared.pop(obj_id, None)
                 object_boxes.pop(obj_id, None)
-                object_speeds.pop(obj_id, None)
 
     # Add new detections as tracked objects
     for i, det in enumerate(detections):
@@ -105,7 +123,7 @@ while True:
     tracked_objects = new_tracked_objects
     object_boxes = new_object_boxes
 
-    # Draw trails and bounding boxes for tracked objects
+    # Draw trails and process data
     for obj_id, (x, y) in tracked_objects.items():
         if obj_id not in track_trails:
             track_trails[obj_id] = deque(maxlen=max_history)
@@ -115,44 +133,58 @@ while True:
         if len(trail) >= 2:
             dx = trail[-1][0] - trail[0][0]
             dy = trail[-2][1] - trail[-1][1]
-
             distance = (dx**2 + dy**2) ** 0.5
-            speed_pxps = (distance / len(trail)) * fps
-            speed_kmph = speed_pxps * meters_per_pixel * 3.6
-            object_speeds[obj_id] = speed_kmph
 
             if distance > motion_threshold and len(trail) >= min_trail_length:
-                for i in range(1, len(trail)):
-                    cv2.line(frame, trail[i - 1], trail[i], (0, 255, 0), 2)
+                if show_debug:
+                    for i in range(1, len(trail)):
+                        cv2.line(frame, trail[i - 1], trail[i], (0, 255, 0), 2)
 
-                x1, y1, x2, y2 = object_boxes.get(obj_id, (0, 0, 0, 0))
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-
-                cv2.putText(frame, f"ID {obj_id} ({x}, {y}) {speed_kmph:.1f} km/h",
-                            (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)
-                cv2.circle(frame, (x, y), 5, (0, 255, 255), -1)
+                    x1, y1, x2, y2 = object_boxes.get(obj_id, (0, 0, 0, 0))
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                    cv2.putText(frame, f"ID {obj_id} ({x}, {y})", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)
+                    cv2.circle(frame, (x, y), 5, (0, 255, 255), -1)
 
                 # Assign logging ID if first time
                 if obj_id not in object_id_mapping:
                     object_id_mapping[obj_id] = true_next_object_id
                     true_next_object_id += 1
 
-                # Store the data to be written later
-                vehicle_data[obj_id].append((x, y, speed_kmph))
+                logging_id = object_id_mapping[obj_id]
 
-    resized = cv2.resize(frame, (1280, 720))
-    cv2.imshow('vehicle detection', resized)
-    if cv2.waitKey(1) & 0xFF == ord("q"):
-        break
+                # Store coordinates for the logging ID
+                if len(vehicle_data[logging_id]) < repeat_coord_limit or not all(
+                    (x, y) == (vx, vy) for vx, vy in vehicle_data[logging_id][-repeat_coord_limit:]
+                ):
+                    vehicle_data[logging_id].append((x, y))
+
+                # capture first pos & direction
+                if logging_id not in initial_positions:
+                    initial_positions[logging_id] = (x, y)
+                if len(vehicle_data[logging_id]) == 15 and logging_id not in initial_directions:
+                    p0 = initial_positions[logging_id]
+                    p15 = (x, y)
+                    initial_directions[logging_id] = (p15[0]-p0[0], p15[1]-p0[1])
+
+    # Show window if debugging
+    if show_debug:
+        resized = cv2.resize(frame, (1280, 720))
+        cv2.imshow('vehicle detection', resized)
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
 
 cap.release()
 cv2.destroyAllWindows()
 
-# Sort and write vehicle data by ID
-for obj_id in sorted(vehicle_data):
-    if len(vehicle_data[obj_id]) >= 120:
-        logging_id = object_id_mapping[obj_id]
-        for x, y, speed in vehicle_data[obj_id]:
-            output_file.write(f"{logging_id}, {x}, {y}, {speed:.2f}\n")
-
-output_file.close()
+with open("vehicle_data.csv", "w") as csv_out:
+    csv_out.write("ID,Direction,Coordinates\n")
+    for log_id in sorted(vehicle_data):
+        if len(vehicle_data[log_id]) >= 120:
+            start_pt = initial_positions.get(log_id)
+            init_vec = initial_directions.get(log_id)
+            turn = "unknown"
+            if start_pt and init_vec:
+                turn = turn_label(start_pt, init_vec,vehicle_data[log_id][-1])
+            coord_str = ",".join(f"{x}:{y}"
+                                 for x, y in vehicle_data[log_id])
+            csv_out.write(f"{log_id},{turn},{coord_str}\n")
