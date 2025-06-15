@@ -10,13 +10,13 @@ show_debug = True
 model = YOLO("yolov8m.pt")
 vehicle_class_ids = [2, 3, 5, 7]  # Class IDs for vehicles
 max_history = 30  # Maximum trail history
-distance_threshold = 200  # Threshold for matching detections
+distance_threshold = 175  # Threshold for matching detections
 motion_threshold = 60  # Minimum motion distance for drawing trails
-min_trail_length = 10  # Minimum trail length to consider valid movement
+min_trail_length = 25  # Minimum trail length to consider valid movement
 max_disappeared = 30  # Max frames an object can disappear
 repeat_coord_limit = 5  # Max consecutive identical entries allowed
 
-video_path = r'C:\Users\malid\OneDrive\Belgeler\GitHub\thesis-2025\video footage\video.MP4'
+video_path = r'C:\Users\malid\Desktop\thesis_footage\iyi_gibi\202206\20220608_0730\20220608_084349_Koh_Dor_4W_d_1_2_org.MP4'
 cap = cv2.VideoCapture(video_path)
 fps = cap.get(cv2.CAP_PROP_FPS)
 total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -29,6 +29,7 @@ disappeared = defaultdict(int)  # Tracks how long objects have been missing
 object_boxes = {}  # Stores bounding boxes of tracked objects
 object_id_mapping = {}  # Maps internal IDs to logged IDs
 vehicle_data = defaultdict(list)  # Store data grouped by object ID
+smoothed_positions = {}  # Smoothed (x, y) positions per object
 
 
 initial_positions  = {} # first (x,y)
@@ -58,7 +59,8 @@ for _ in tqdm(range(total_frames), desc="Processing video"):
         break
 
     # Perform object detection on the current frame
-    results = model(frame, conf=0.4, verbose=False)[0]
+    results = model(frame, conf=0.4, verbose=False, device=0)[0]
+
     detections = []
     boxes = []
 
@@ -130,6 +132,15 @@ for _ in tqdm(range(total_frames), desc="Processing video"):
         trail = track_trails[obj_id]
         trail.append((x, y))
 
+        # Apply smoothing to reduce jitter
+        N = 5
+        prev = smoothed_positions.get(obj_id, (x, y))
+        alpha = 1.0 / N
+        smoothed_x = int((1 - alpha) * prev[0] + alpha * x)
+        smoothed_y = int((1 - alpha) * prev[1] + alpha * y)
+        smoothed_positions[obj_id] = (smoothed_x, smoothed_y)
+        x, y = smoothed_x, smoothed_y
+
         if len(trail) >= 2:
             dx = trail[-1][0] - trail[0][0]
             dy = trail[-2][1] - trail[-1][1]
@@ -142,20 +153,32 @@ for _ in tqdm(range(total_frames), desc="Processing video"):
 
                     x1, y1, x2, y2 = object_boxes.get(obj_id, (0, 0, 0, 0))
                     cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                    cv2.putText(frame, f"ID {obj_id} ({x}, {y})", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 255, 255), 2)
+                    cv2.putText(frame, f"ID {obj_id} ({x}, {y})", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
                     cv2.circle(frame, (x, y), 5, (0, 255, 255), -1)
 
-                # Assign logging ID if first time
-                if obj_id not in object_id_mapping:
-                    object_id_mapping[obj_id] = true_next_object_id
-                    true_next_object_id += 1
+                    # Assign logging ID if first time
+                    if obj_id not in object_id_mapping:
+                        object_id_mapping[obj_id] = true_next_object_id
+                        true_next_object_id += 1
 
-                logging_id = object_id_mapping[obj_id]
+                    logging_id = object_id_mapping[obj_id]
+
+                    if logging_id in initial_directions:
+                        unit_init = norm(initial_directions[logging_id])
+                        start_pt  = initial_positions[logging_id]
+                        unit_now  = norm((x - start_pt[0], y - start_pt[1]))
+                        L = 100
+                        blue_tip = (int(x + unit_init[0]*L), int(y + unit_init[1]*L))
+                        red_tip  = (int(x + unit_now[0]*L),  int(y + unit_now[1]*L))
+                        cv2.arrowedLine(frame, (x, y), blue_tip, (255, 0, 0), 2, tipLength=0.3)
+                        cv2.arrowedLine(frame, (x, y), red_tip,  (0, 0, 255), 2, tipLength=0.3)
+
+                        # turn label text
+                        lbl = turn_label(start_pt, initial_directions[logging_id], (x, y))
+                        cv2.putText(frame, lbl, (x + 10, y - 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
 
                 # Store coordinates for the logging ID
-                if len(vehicle_data[logging_id]) < repeat_coord_limit or not all(
-                    (x, y) == (vx, vy) for vx, vy in vehicle_data[logging_id][-repeat_coord_limit:]
-                ):
+                if len(vehicle_data[logging_id]) < repeat_coord_limit or not all((x, y) == (vx, vy) for vx, vy in vehicle_data[logging_id][-repeat_coord_limit:]):
                     vehicle_data[logging_id].append((x, y))
 
                 # capture first pos & direction
@@ -176,15 +199,17 @@ for _ in tqdm(range(total_frames), desc="Processing video"):
 cap.release()
 cv2.destroyAllWindows()
 
-with open("vehicle_data.csv", "w") as csv_out:
+with open("dataset/20220608_0730_1.csv", "w") as csv_out:
     csv_out.write("ID,Direction,Coordinates\n")
+    seq_id = 614
     for log_id in sorted(vehicle_data):
-        if len(vehicle_data[log_id]) >= 120:
-            start_pt = initial_positions.get(log_id)
-            init_vec = initial_directions.get(log_id)
-            turn = "unknown"
-            if start_pt and init_vec:
-                turn = turn_label(start_pt, init_vec,vehicle_data[log_id][-1])
-            coord_str = ",".join(f"{x}:{y}"
-                                 for x, y in vehicle_data[log_id])
-            csv_out.write(f"{log_id},{turn},{coord_str}\n")
+        if len(vehicle_data[log_id]) < 90:
+            continue
+        start_pt = initial_positions.get(log_id)
+        init_vec = initial_directions.get(log_id)
+        label = "unknown"
+        if start_pt and init_vec:
+            label = turn_label(start_pt, init_vec,vehicle_data[log_id][-1])
+        coord_str = ",".join(f"{x}:{y}" for x, y in vehicle_data[log_id])
+        csv_out.write(f"{seq_id},{label},{coord_str}\n")
+        seq_id += 1
