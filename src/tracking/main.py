@@ -16,6 +16,8 @@ min_trail_length = 25  # Minimum trail length to consider valid movement
 max_disappeared = 30  # Max frames an object can disappear
 repeat_coord_limit = 5  # Max consecutive identical entries allowed
 
+# !!! IMPORTANT NOTE: The code works best with the footage found 
+# in the directory /var/scratch/verstoep/datasets/Traffic-Dresden/Koh_Dor_4W.
 video_path = r'C:\Users\malid\Desktop\thesis_footage\iyi_gibi\202206\20220608_0730\20220608_084349_Koh_Dor_4W_d_1_2_org.MP4'
 cap = cv2.VideoCapture(video_path)
 fps = cap.get(cv2.CAP_PROP_FPS)
@@ -201,7 +203,7 @@ cv2.destroyAllWindows()
 
 with open("dataset/20220608_0730_1.csv", "w") as csv_out:
     csv_out.write("ID,Direction,Coordinates\n")
-    seq_id = 614
+    seq_id = 1
     for log_id in sorted(vehicle_data):
         if len(vehicle_data[log_id]) < 90:
             continue
