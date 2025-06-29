@@ -9,37 +9,39 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from sklearn.utils.class_weight import compute_class_weight
 
-# load data
+# Load preprocessed data
 data = np.load("dataset/full_dataset/preprocessed.npz")
 X_train, y_train = data["X_train"], data["y_train"]
 X_val, y_val = data["X_val"], data["y_val"]
+X_test, y_test = data["X_test"], data["y_test"]
 
-# convert to PyTorch tensors
-train_dataset = TensorDataset(torch.tensor(X_train), torch.tensor(y_train))
-val_dataset = TensorDataset(torch.tensor(X_val), torch.tensor(y_val))
+# Convert to PyTorch tensors
+train_dataset = TensorDataset(torch.tensor(X_train, dtype=torch.float32), torch.tensor(y_train, dtype=torch.int64))
+val_dataset = TensorDataset(torch.tensor(X_val, dtype=torch.float32), torch.tensor(y_val, dtype=torch.int64))
+test_dataset = TensorDataset(torch.tensor(X_test, dtype=torch.float32), torch.tensor(y_test, dtype=torch.int64))
 
 train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=32)
+test_loader = DataLoader(test_dataset, batch_size=32)
 
-# define model
+# Define model
 class TrajectoryClassifier(nn.Module):
     def __init__(self):
         super().__init__()
-        self.lstm = nn.LSTM(input_size=3,hidden_size=128,num_layers=2,dropout=0.3,bidirectional=True,batch_first=True)
+        self.lstm = nn.LSTM(input_size=3, hidden_size=128, num_layers=2,
+                            dropout=0.3, bidirectional=True, batch_first=True)
         self.fc = nn.Linear(128 * 2, 3)
 
     def forward(self, x):
-        _, (h_n, _) = self.lstm(x) # h_n shape: (num_layers * num_directions, batch_size, hidden_size)
-        h_cat = torch.cat((h_n[-2], h_n[-1]), dim=1)  # take final forward and backward hidden states
-        out = self.fc(h_cat)
-        return out
-
+        _, (h_n, _) = self.lstm(x)
+        h_cat = torch.cat((h_n[-2], h_n[-1]), dim=1)  # last forward and backward hidden states
+        return self.fc(h_cat)
 
 model = TrajectoryClassifier()
-class_weights = compute_class_weight(class_weight='balanced',classes=np.unique(y_train),y=y_train)
+class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(y_train), y=y_train)
 class_weights_tensor = torch.tensor(class_weights, dtype=torch.float32)
 
-# Weighted loss function
+# Loss and optimizer
 loss_fn = nn.CrossEntropyLoss(weight=class_weights_tensor)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
@@ -73,24 +75,25 @@ for epoch in range(10):
 torch.save(model.state_dict(), "model.pth")
 print("Model saved as model.pth")
 
+# test set evaluation
 model.eval()
-y_true, y_pred = [], []
+y_true_test, y_pred_test = [], []
 
 with torch.no_grad():
-    for X_batch, y_batch in val_loader:
+    for X_batch, y_batch in test_loader:
         output = model(X_batch)
         predicted = torch.argmax(output, dim=1)
-        y_true.extend(y_batch.tolist())
-        y_pred.extend(predicted.tolist())
+        y_true_test.extend(y_batch.tolist())
+        y_pred_test.extend(predicted.tolist())
 
-# Print classification report
-print(classification_report(y_true, y_pred, target_names=["left", "right", "straight"]))
+# Classification report
+print("Test Set Performance")
+print(classification_report(y_true_test, y_pred_test, target_names=["left", "right", "straight"]))
 
-# Plot confusion matrix
-cm = confusion_matrix(y_true, y_pred)
-sns.heatmap(cm, annot=True, fmt="d", cmap="Blues",xticklabels=["left", "right", "straight"], yticklabels=["left", "right", "straight"])
+# Confusion matrix
+cm = confusion_matrix(y_true_test, y_pred_test)
+sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=["left", "right", "straight"], yticklabels=["left", "right", "straight"])
 plt.xlabel("Predicted")
 plt.ylabel("Actual")
-plt.title("Confusion Matrix")
-plt.savefig("confusion_matrix.png")
-print("Confusion matrix saved as confusion_matrix.png")
+plt.title("Confusion Matrix on Test Set")
+plt.savefig("confusion_matrix_test.png")

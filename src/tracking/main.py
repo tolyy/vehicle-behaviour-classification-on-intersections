@@ -205,7 +205,7 @@ with open("dataset/20220608_0730_1.csv", "w") as csv_out:
     csv_out.write("ID,Direction,Coordinates\n")
     seq_id = 1
     for log_id in sorted(vehicle_data):
-        if len(vehicle_data[log_id]) < 90:
+        if len(vehicle_data[log_id]) < 120:
             continue
         start_pt = initial_positions.get(log_id)
         init_vec = initial_directions.get(log_id)
