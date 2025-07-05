@@ -45,12 +45,12 @@ object_boxes = {}
 object_id_mapping = {}
 smoothed_positions = {}
 
-vehicle_data = defaultdict(list)
 vehicle_labels = {}
 locked_ids = set()
 trajectory_buffers = defaultdict(list)
 initial_positions = {}
 initial_directions = {}
+heading_correction_flags = {}
 
 def compute_angle_sequence(points):
     angle_sequence = [
@@ -68,9 +68,7 @@ def normalize_angle(v):
     n = math.hypot(v[0], v[1])
     return (v[0]/n, v[1]/n) if n else (0, 0)
 
-# !!! IMPORTANT NOTE: The code works best with the footage found 
-# in the directory /var/scratch/verstoep/datasets/Traffic-Dresden/Koh_Dor_4W.
-cap = cv2.VideoCapture(r"C:\Users\malid\Desktop\thesis_footage\iyi_gibi\202207\20220704_0730\20220704_084254_Koh_Dor_4W_d_1_3_org.MP4")
+cap = cv2.VideoCapture(r"C:\Users\malid\Desktop\thesis_footage\iyi_gibi\202207\20220706_1000\20220706_100002_Koh_Dor_4W_d_1_3_org.MP4")
 
 while True:
     ret, frame = cap.read()
@@ -128,7 +126,7 @@ while True:
                 trajectory_buffers.pop(obj_id, None)
                 locked_ids.discard(obj_id)
                 smoothed_positions.pop(obj_id, None)
-                vehicle_data.pop(obj_id, None)
+                heading_correction_flags.pop(obj_id, None)
 
     for i, det in enumerate(detections):
         if i not in matched_detections:
@@ -146,7 +144,6 @@ while True:
         trail = track_trails[obj_id]
         trail.append((x, y))
 
-        # Smooth
         N = 5
         prev = smoothed_positions.get(obj_id, (x, y))
         alpha = 1.0 / N
@@ -169,7 +166,6 @@ while True:
             p15 = (x, y)
             initial_directions[logging_id] = (p15[0] - p0[0], p15[1] - p0[1])
 
-        # Predict every 10 frames until locked
         if len(trajectory_buffers[obj_id]) >= min_points_for_prediction and obj_id not in locked_ids:
             if len(trajectory_buffers[obj_id]) % 5 == 0:
                 points = trajectory_buffers[obj_id][-120:] if len(trajectory_buffers[obj_id]) >= 120 else trajectory_buffers[obj_id]
@@ -182,7 +178,6 @@ while True:
                 label = torch.argmax(pred, dim=1).item()
                 model_label = ["left", "right", "straight"][label]
 
-                # Global heading angle calculation
                 start_pt = initial_positions[logging_id]
                 init_vec = initial_directions.get(logging_id, (1, 0))
                 end_pt = points[-1]
@@ -194,19 +189,18 @@ while True:
                 dot_val = np.clip(unit_init[0]*unit_final[0] + unit_init[1]*unit_final[1], -1.0, 1.0)
                 heading_change = math.degrees(math.acos(dot_val))
 
-                # Smooth out errors in heading change due to noise
                 if heading_change < 10:
                     final_label = "straight"
+                    heading_correction_flags[obj_id] = True
                 else:
                     final_label = model_label
+                    heading_correction_flags[obj_id] = False
 
                 vehicle_labels[obj_id] = final_label
 
-            # Lock after 180 points
             if len(trajectory_buffers[obj_id]) >= lock_points:
                 locked_ids.add(obj_id)
 
-        # Draw
         if len(trail) >= 2:
             dx = trail[-1][0] - trail[0][0]
             dy = trail[-2][1] - trail[-1][1]
@@ -223,7 +217,12 @@ while True:
 
                 if obj_id in vehicle_labels:
                     color = (0, 0, 255) if obj_id in locked_ids else (0, 255, 0)
-                    cv2.putText(frame, vehicle_labels[obj_id], (x + 10, y - 30), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
+                    text = vehicle_labels[obj_id]
+
+                    if heading_correction_flags.get(obj_id, False) and vehicle_labels[obj_id] == "straight":
+                        text += " (corr.)"
+
+                    cv2.putText(frame, text, (x + 10, y - 30), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
 
     resized = cv2.resize(frame, (1280, 720))
     cv2.imshow("Live Classification", resized)

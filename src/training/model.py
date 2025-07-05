@@ -28,8 +28,7 @@ test_loader = DataLoader(test_dataset, batch_size=32)
 class TrajectoryClassifier(nn.Module):
     def __init__(self):
         super().__init__()
-        self.lstm = nn.LSTM(input_size=3, hidden_size=128, num_layers=2,
-                            dropout=0.3, bidirectional=True, batch_first=True)
+        self.lstm = nn.LSTM(input_size=3, hidden_size=128, num_layers=2, dropout=0.3, bidirectional=True, batch_first=True)
         self.fc = nn.Linear(128 * 2, 3)
 
     def forward(self, x):
@@ -45,6 +44,9 @@ class_weights_tensor = torch.tensor(class_weights, dtype=torch.float32)
 loss_fn = nn.CrossEntropyLoss(weight=class_weights_tensor)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
+val_accuracies = []
+train_losses = []
+
 # Train
 for epoch in range(10):
     model.train()
@@ -57,7 +59,9 @@ for epoch in range(10):
         optimizer.step()
         total_loss += loss.item()
 
-    print(f"Epoch {epoch+1} | Loss: {total_loss:.4f}")
+    avg_loss = total_loss / len(train_loader)
+    train_losses.append(avg_loss)
+    print(f"Epoch {epoch+1} | Training Loss: {avg_loss:.4f}")
 
     # Validation accuracy
     model.eval()
@@ -69,15 +73,31 @@ for epoch in range(10):
             correct += (predicted == y_batch).sum().item()
             total += y_batch.size(0)
     acc = correct / total
+    val_accuracies.append(acc)
     print(f"Validation Accuracy: {acc:.2%}")
+
+# Plot graph
+plt.figure()
+epochs = range(1, len(val_accuracies) + 1)
+plt.plot(epochs, val_accuracies, marker='o', color='blue', label='Validation Accuracy')
+plt.plot(epochs, train_losses, marker='x', color='red', label='Training Loss')
+plt.title("Validation Accuracy & Training Loss over Epochs")
+plt.xlabel("Epoch")
+plt.ylabel("Metric Value")
+plt.ylim(0, 1)
+plt.grid(True)
+plt.legend()
+plt.savefig("accuracy_loss_over_epochs.png")
+print("Accuracy and loss plot saved as accuracy_loss_over_epochs.png")
 
 # Save model
 torch.save(model.state_dict(), "model.pth")
 print("Model saved as model.pth")
 
-# test set evaluation
+# Test set evaluation
 model.eval()
-y_true_test, y_pred_test = [], []
+y_true_test = []
+y_pred_test = []
 
 with torch.no_grad():
     for X_batch, y_batch in test_loader:
@@ -86,7 +106,6 @@ with torch.no_grad():
         y_true_test.extend(y_batch.tolist())
         y_pred_test.extend(predicted.tolist())
 
-# Classification report
 print("Test Set Performance")
 print(classification_report(y_true_test, y_pred_test, target_names=["left", "right", "straight"]))
 
@@ -97,3 +116,4 @@ plt.xlabel("Predicted")
 plt.ylabel("Actual")
 plt.title("Confusion Matrix on Test Set")
 plt.savefig("confusion_matrix_test.png")
+print("Confusion matrix plot saved as confusion_matrix_test.png")
