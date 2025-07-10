@@ -37,8 +37,8 @@ Note: If you plan to use GPU acceleration, ensure that your PyTorch installation
 ## Running the pipeline
 
 ### 1. Detection & Trajectory Logging
-Run the detection script to process video footage and generate a CSV file with vehicle trajectories and direction labels.
-You can see the example datasets on the folder dataset/.
+Run the detection script to process video footage and generate a CSV file with vehicle trajectories and direction labels.<br/>
+You can see the example datasets on the folder dataset/.<br/>
 The example dataset(s) can also be used to test the pipeline.
 ```bash
 python main.py
@@ -76,13 +76,13 @@ python live_classification.py
 Update the video path in the script to point to your video file or stream. The system displays live predictions on screen, showing object IDs and predicted maneuver labels.
 
 ## Important Notes:
-1. Best results are achieved with top-down intersection views similar to this dataset.
+- Best results are achieved with top-down intersection views similar to this dataset.
 #### An example of usable footage.
 <img width="400" height="272" alt="example" src="https://github.com/user-attachments/assets/630e885b-59bd-4d61-b543-395cac95b61b" />
 
-3. Ensure model.pth exists before running live classification.
+- Ensure model.pth exists before running live classification.
 
-4. main.py will generate multiple seperate CSV files, it is advised to gather all of them in a new CSV file manually before preprocessing.
+- main.py will generate multiple seperate CSV files, it is advised to gather all of them in a new CSV file manually before preprocessing.
 
 ## Contact
 For questions or further information, and if you use this code or build upon it, please contact: m.a.dolgun@student.vu.nl or dolgunmertali@gmail.com for questions and citations.
