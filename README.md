@@ -22,13 +22,13 @@ Clone the repo:
 git clone https://github.com/tolyy-vu/vehicle-behaviour-classification-on-intersections.git
 ```
 
-### 3. Create and activate a conda environment
+### 2. Create and activate a conda environment
 ```bash
 conda create -n vehicle-detection python=3.9
 conda activate vehicle-detection
 ```
 
-### 4. Install requirements
+### 3. Install requirements
 ```bash
 pip install -r requirements.txt
 ```
