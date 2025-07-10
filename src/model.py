@@ -91,7 +91,7 @@ plt.savefig("accuracy_loss_over_epochs.png")
 print("Accuracy and loss plot saved as accuracy_loss_over_epochs.png")
 
 # Save model
-torch.save(model.state_dict(), "model.pth")
+torch.save(model.state_dict(), "models/model.pth")
 print("Model saved as model.pth")
 
 # Test set evaluation
