@@ -19,7 +19,7 @@ The detailed approach and evaluation can be found in [Will include the link to t
 
 Clone the repo:
 ```bash
-git clone https://github.com/tolyy-vu/thesis-2025.git
+git clone https://github.com/tolyy-vu/vehicle-behaviour-classification-on-intersections.git
 ```
 
 ### 3. Create and activate a conda environment
