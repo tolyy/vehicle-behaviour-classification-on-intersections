@@ -81,7 +81,7 @@ Ensure model.pth exists before running live classification.
 main.py will generate multiple seperate CSV files, it is advised to gather all of them in a new CSV file manually before preprocessing.
 
 ## Contact
-For questions or further information, and if you use this code or build upon it, please contact: m.a.dolgun@student.vu.nl for questions and citations.
+For questions or further information, and if you use this code or build upon it, please contact: m.a.dolgun@student.vu.nl or dolgunmertali@gmail.com for questions and citations.
 
 
 
