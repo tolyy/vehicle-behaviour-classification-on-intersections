@@ -202,7 +202,7 @@ for _ in tqdm(range(total_frames), desc="Processing video"):
 cap.release()
 cv2.destroyAllWindows()
 
-# It is mandatory to change the name of the csv file manually on each run to avoid overwriting the files, 
+# It is mandatory to change the name of the CSV file manually on each run to avoid overwriting the files, 
 # and in a case where multiple files are generated, it is also mandatory to update the seq_id variable manually.
 # The seq_id variable is used to assign a unique ID to each sequence in the CSV file.
 # It is not expected by the model for it to be sequential, but it is advised for better reading of the dataset.
