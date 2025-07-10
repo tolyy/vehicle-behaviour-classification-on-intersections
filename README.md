@@ -1,6 +1,6 @@
 # Vehicle Behavior Detection and Classification at Intersections
 
-This repository contains the full code for my bachelor thesis, which focuses on detecting vehicles at intersections and classifying their maneuvers (left turn, right turn, straight) using deep learning and trajectory analysis.
+This repository contains the full code, which focuses on detecting vehicles at intersections and classifying their maneuvers (left turn, right turn, straight) using deep learning and trajectory analysis.
 
 ## Thesis Paper
  
