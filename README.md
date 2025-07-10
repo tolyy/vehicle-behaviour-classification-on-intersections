@@ -76,14 +76,12 @@ Update the video path in the script to point to your video file or stream. The s
 
 ## Important Notes:
 1. Best results are achieved with top-down intersection views similar to this dataset.
+#### An example of usable footage.
 <img width="400" height="272" alt="example" src="https://github.com/user-attachments/assets/630e885b-59bd-4d61-b543-395cac95b61b" />
 
-#### An example of usable footage.
+3. Ensure model.pth exists before running live classification.
 
-
-2. Ensure model.pth exists before running live classification.
-
-3. main.py will generate multiple seperate CSV files, it is advised to gather all of them in a new CSV file manually before preprocessing.
+4. main.py will generate multiple seperate CSV files, it is advised to gather all of them in a new CSV file manually before preprocessing.
 
 ## Contact
 For questions or further information, and if you use this code or build upon it, please contact: m.a.dolgun@student.vu.nl or dolgunmertali@gmail.com for questions and citations.
