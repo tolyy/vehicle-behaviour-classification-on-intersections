@@ -15,7 +15,7 @@ The detailed approach and evaluation can be found in [Will include the link to t
 
 ## Setup
 
-### 1. Clone or download
+### 1. Clone the repository
 
 Clone the repo:
 ```bash
@@ -58,7 +58,7 @@ Ensure that CSV_PATH in the script points to your generated CSV file. The output
 ### 3. Training
 Train the LSTM model using the preprocessed data.
 ```bash
-python train_model.py
+python model.py
 ```
 This script trains the bidirectional LSTM on the preprocessed data using balanced class weights.
 
