@@ -39,6 +39,7 @@ Note: If you plan to use GPU acceleration, ensure that your PyTorch installation
 ### 1. Detection & Trajectory Logging
 Run the detection script to process video footage and generate a CSV file with vehicle trajectories and direction labels.
 You can see the example datasets on the folder dataset/
+The example dataset(s) can also be used to test the pipeline
 ```bash
 python main.py
 ```
