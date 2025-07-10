@@ -75,14 +75,14 @@ python live_classification.py
 Update the video path in the script to point to your video file or stream. The system displays live predictions on screen, showing object IDs and predicted maneuver labels.
 
 ## Important Notes:
-Best results are achieved with top-down intersection views similar to this dataset.
-<img width="957" height="650" alt="example" src="https://github.com/user-attachments/assets/630e885b-59bd-4d61-b543-395cac95b61b" />
-#### An example of a usable footage.
+1. Best results are achieved with top-down intersection views similar to this dataset.
+<img width="400" height="272" alt="example" src="https://github.com/user-attachments/assets/630e885b-59bd-4d61-b543-395cac95b61b" />
+#### An example of usable footage.
 
 
-Ensure model.pth exists before running live classification.
+2. Ensure model.pth exists before running live classification.
 
-main.py will generate multiple seperate CSV files, it is advised to gather all of them in a new CSV file manually before preprocessing.
+3. main.py will generate multiple seperate CSV files, it is advised to gather all of them in a new CSV file manually before preprocessing.
 
 ## Contact
 For questions or further information, and if you use this code or build upon it, please contact: m.a.dolgun@student.vu.nl or dolgunmertali@gmail.com for questions and citations.
