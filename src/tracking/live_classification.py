@@ -13,8 +13,7 @@ yolo_model = YOLO("yolov8m.pt")
 class TrajectoryClassifier(nn.Module):
     def __init__(self):
         super().__init__()
-        self.lstm = nn.LSTM(input_size=3, hidden_size=128, num_layers=2,
-                            dropout=0.3, bidirectional=True, batch_first=True)
+        self.lstm = nn.LSTM(input_size=3, hidden_size=128, num_layers=2, dropout=0.3, bidirectional=True, batch_first=True)
         self.fc = nn.Linear(128 * 2, 3)
 
     def forward(self, x):
@@ -68,7 +67,12 @@ def normalize_angle(v):
     n = math.hypot(v[0], v[1])
     return (v[0]/n, v[1]/n) if n else (0, 0)
 
-cap = cv2.VideoCapture(r"C:\Users\malid\Desktop\thesis_footage\iyi_gibi\202207\20220706_1000\20220706_100002_Koh_Dor_4W_d_1_3_org.MP4")
+# !!! IMPORTANT NOTE: It is advised that if a different video is used, the parameters below should be adjusted accordingly.
+# It is also advised to use a different model, such as YOLOv8n or YOLOv8s, if the video is not very complex.
+
+# !!! IMPORTANT NOTE 2: This live classification script uses the same custom ID based tracking system as the main.py script with some modifications.
+# All the parameters adjusted in the main.py script should be adjusted here as well.
+cap = cv2.VideoCapture(video_path = "video_footage/sample_video.mp4")
 
 while True:
     ret, frame = cap.read()
@@ -221,7 +225,6 @@ while True:
 
                     if heading_correction_flags.get(obj_id, False) and vehicle_labels[obj_id] == "straight":
                         text += " (corr.)"
-
                     cv2.putText(frame, text, (x + 10, y - 30), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
 
     resized = cv2.resize(frame, (1280, 720))

@@ -16,9 +16,9 @@ min_trail_length = 25  # Minimum trail length to consider valid movement
 max_disappeared = 30  # Max frames an object can disappear
 repeat_coord_limit = 5  # Max consecutive identical entries allowed
 
-# !!! IMPORTANT NOTE: The code works best with the footage found 
-# in the directory /var/scratch/verstoep/datasets/Traffic-Dresden/Koh_Dor_4W.
-video_path = r'C:\Users\malid\Desktop\thesis_footage\iyi_gibi\202206\20220608_0730\20220608_084349_Koh_Dor_4W_d_1_2_org.MP4'
+# !!! IMPORTANT NOTE: It is advised that if a different video is used, the parameters below should be adjusted accordingly.
+# It is also advised to use a different model, such as YOLOv8n or YOLOv8s, if the video is not very complex.
+video_path = "video_footage/video.mp4"  # Path to the video file
 cap = cv2.VideoCapture(video_path)
 fps = cap.get(cv2.CAP_PROP_FPS)
 total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -201,7 +201,11 @@ for _ in tqdm(range(total_frames), desc="Processing video"):
 cap.release()
 cv2.destroyAllWindows()
 
-with open("dataset/20220608_0730_1.csv", "w") as csv_out:
+# It is mandatory to change the name of the csv file manually on each run to avoid overwriting the files, 
+# and in a case where multiple files are generated, it is also mandatory to update the seq_id variable manually.
+# The seq_id variable is used to assign a unique ID to each sequence in the CSV file.
+# It is not expected by the model for it to be sequential, but it is advised for better reading of the dataset.
+with open("dataset/data1.csv", "w") as csv_out:
     csv_out.write("ID,Direction,Coordinates\n")
     seq_id = 1
     for log_id in sorted(vehicle_data):
