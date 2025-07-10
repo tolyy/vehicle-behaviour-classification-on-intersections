@@ -5,6 +5,7 @@ from collections import deque, defaultdict
 from tqdm import tqdm 
 import math
 
+# Set this flag to True if you want to see the debug window.
 show_debug = True 
 
 model = YOLO("yolov8m.pt")
