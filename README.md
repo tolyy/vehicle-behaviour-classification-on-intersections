@@ -4,7 +4,7 @@ This repository contains the full pipeline for detecting vehicles at intersectio
 
 ## Thesis Paper
  
-The detailed approach and evaluation can be found in [Will include the link to the paper later].
+The detailed approach and evaluation can be found in [(https://cs.vu.nl/~versto/VU-CS-BSc-MSc-Theses/VU-CS-BSc-Thesis-Mert-Dolgun-2025.pdf)].
 
 ## Project Overview
 
